@@ -1,5 +1,2 @@
 User-agent: *
 Allow: /
-
-# Sitemap
-Sitemap: https://docs.wxops.cloud/sitemap.xml

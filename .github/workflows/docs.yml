@@ -44,6 +44,7 @@ jobs:
           cache: npm
 
       - name: Configure GitHub Pages
+        id: configure-pages
         uses: actions/configure-pages@v5
 
       - name: Install dependencies
@@ -56,6 +57,7 @@ jobs:
         run: npm run build
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+          BASE_URL: ${{ steps.configure-pages.outputs.base_path }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
