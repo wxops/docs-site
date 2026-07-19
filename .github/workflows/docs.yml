@@ -1,0 +1,77 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# ── Required GitHub Pages setup ────────────────────────────────────────────────
+#
+# One-time (do this before the first run):
+#   Repository → Settings → Pages → Source → GitHub Actions
+#
+# Repository variables (Settings → Variables → Actions):
+#   NODE_VERSION   default: 22   Node LTS version; bump here to upgrade all jobs
+#   RUNNER_LABEL   default: ubuntu-latest   use a self-hosted label if needed
+
+env:
+  NODE_VERSION: ${{ vars.NODE_VERSION || '22' }}
+
+permissions:
+  contents: read
+  pages: write       # publish to GitHub Pages
+  id-token: write    # OIDC token for trusted deployment
+
+# Only one deploy can run at a time; don't cancel in-progress deploys
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # ── Build & validate ──────────────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history — required for last-update dates and authors
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/
+
+  # ── Deploy (main branch only) ─────────────────────────────────────────────
+  deploy:
+    name: Deploy
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

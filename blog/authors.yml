@@ -1,0 +1,16 @@
+xeus:
+  name: Xeus Nguyen
+  title: Platform Engineer
+  url: https://wiki.xeusnguyen.xyz
+  image_url: https://github.com/xeus-territory.png
+  page: true
+  socials:
+    github: xeus-territory
+    linkedin: xeusnguyen
+    website: https://wiki.xeusnguyen.xyz
+
+platform-team:
+  name: W'xOps Platform Team
+  title: Platform Engineering
+  image_url: https://github.com/wxops.png
+  page: false

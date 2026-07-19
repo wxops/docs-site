@@ -1,0 +1,34 @@
+release:
+  label: Release
+  permalink: /release
+  description: Portal release notes and changelogs.
+
+platform:
+  label: Platform Engineering
+  permalink: /platform
+  description: Platform engineering patterns, decisions, and rationale.
+
+cli:
+  label: CLI
+  permalink: /cli
+  description: wxops CLI updates and guides.
+
+scaffold:
+  label: Scaffold
+  permalink: /scaffold
+  description: Golden-path scaffolding and project templates.
+
+catalog:
+  label: Catalog
+  permalink: /catalog
+  description: Service catalog updates and usage guides.
+
+darlane:
+  label: Darlane
+  permalink: /darlane
+  description: Inner-loop developer tooling with Darlane debug pods.
+
+security:
+  label: Security
+  permalink: /security
+  description: Security model, RBAC, and Pinniped integration.
