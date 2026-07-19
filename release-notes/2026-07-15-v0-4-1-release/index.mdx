@@ -1,0 +1,113 @@
+---
+slug: v0-4-1-release
+title: "W'xOps Portal v0.4.1 — Darlane Sync Improvements & CLI Download Proxy"
+authors: [xeus]
+tags: [release, cli, darlane]
+image: /img/wxops-social.png
+date: 2026-07-15
+description: >
+  v0.4.1 fixes the darlane sync delete bug, adds a max-debounce cap for large
+  file bursts, kubectl retry on pod restarts, graceful SIGINT shutdown, and an
+  authenticated CLI binary download proxy so developers never need direct Gitea access.
+---
+
+v0.4.1 is a focused patch on top of the Darlane + CLI release from v0.4.0. It
+addresses the most-reported developer pain point (`darlane sync` silently ignoring
+deleted files), hardens the sync session against pod restarts, and adds an
+authenticated CLI download proxy through the portal so developers never need
+direct Gitea credentials.
+
+{/* truncate */}
+
+## `wxops darlane sync` — Delete Propagation Fix
+
+The biggest change in this release: when you deleted a file locally during a
+`darlane sync` session, the file persisted in the pod indefinitely. The watcher
+only handled `Write`, `Create`, and `Rename` events — `Remove` was silently
+dropped.
+
+**Now:** deletes are tracked in a separate map and flushed to the pod as a
+`kubectl exec rm -rf` call on the next debounce tick. Delete flushes always run
+*before* create/write flushes, so a file that's deleted and immediately recreated
+lands in the pod in the correct order.
+
+```
+✗  deleted 2 file(s): old_handler.go, old_util.go
+↑  synced  1 file(s): handler.go
+```
+
+## Initial Full Sync on Startup
+
+`darlane sync` now performs a full sync of all non-excluded files immediately
+after the watcher starts. This means the pod is always in a clean state from the
+moment the session begins — no more "why doesn't the pod have my latest code?"
+on a fresh debug session.
+
+```bash
+wxops darlane sync payment-api
+# → initial sync: 14 file(s)
+# watching  ./src  →  tenant-wxops/payment-api-darlane:/app
+```
+
+Suppress with `--no-initial-sync` if you want the old behaviour.
+
+## Max-Debounce Cap (2 s)
+
+The old debounce reset on every event. During a `git checkout` or a build
+emitting hundreds of files, the timer kept resetting and nothing flushed until
+the burst was completely done — sometimes 10–30 seconds of no syncs.
+
+The debounce now has a 2-second hard cap: even if events are still arriving,
+the flush fires at the 2-second mark. Large file bursts get their first sync
+in ≤ 2 s, not after the burst finishes.
+
+## kubectl Retry
+
+Pods restart during development. Both sync and delete calls now retry up to
+3 times with a 2-second delay between attempts:
+
+```
+⚠  pod not ready, retrying (1/3)…
+⚠  pod not ready, retrying (2/3)…
+↑  synced  3 file(s): main.go, handler.go, util.go
+```
+
+## Graceful SIGINT / SIGTERM
+
+`Ctrl-C` now flushes any pending batch before exiting instead of dropping it:
+
+```
+^C
+stopped.
+```
+
+## CLI Download Proxy
+
+Developers previously needed direct Gitea access to download the `wxops` binary.
+v0.4.1 adds an authenticated download endpoint to the portal backend:
+
+```
+GET /api/v1/cli/download/:platform
+```
+
+The endpoint calls the Gitea releases API with the portal's service-account token
+and streams the latest binary back to your authenticated session. The CLI download
+card on the overview page now links directly to this endpoint — no Gitea credentials
+required.
+
+Supported platforms: `linux-amd64`, `linux-arm64`, `darwin-amd64`, `darwin-arm64`,
+`windows-amd64`.
+
+## nginx Cookie Buffer Fix
+
+A `502 upstream sent too big header` error on `/auth/callback` in Kubernetes
+deployments was traced to nginx's default 4 kB proxy buffer being too small for
+the AES-256-GCM Pinniped session cookie (id_token + access_token + refresh_token
+≈ 3–4 kB). Fixed by adding `proxy_buffer_size 32k` to the `/auth/` location block.
+
+Also fixed: the `Secure` cookie flag is now set correctly from the
+`X-Forwarded-Proto` header rather than hardcoded, so production HTTPS deployments
+behind an Ingress controller work without config changes.
+
+
+See the full [Architecture docs](/docs/concepts/architecture) or browse the [Service Catalog guide](/docs/catalog/service-catalog) to get started with v0.4.1.

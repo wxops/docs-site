@@ -1,0 +1,19 @@
+platform-engineering:
+  label: Platform Engineering
+  permalink: /platform-engineering
+  description: Platform engineering patterns, decisions, and rationale.
+
+philosophy:
+  label: Philosophy
+  permalink: /philosophy
+  description: The thinking behind W'xOps design decisions and architecture choices.
+
+architecture:
+  label: Architecture
+  permalink: /architecture
+  description: System design, components, and integration patterns.
+
+case-study:
+  label: Case Study
+  permalink: /case-study
+  description: Real-world adoption stories and lessons learned from teams using W'xOps.

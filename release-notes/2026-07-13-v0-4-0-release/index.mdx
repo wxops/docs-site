@@ -1,0 +1,207 @@
+---
+slug: v0-4-0-release
+title: "W'xOps Portal v0.4.0 — Darlane & wxops CLI"
+authors: [xeus]
+tags: [release, darlane, cli]
+image: /img/wxops-social.png
+date: 2026-07-13
+description: >
+  v0.4.0 ships Darlane — on-demand parallel debug pods configurable through the
+  portal's Promotion panel — and the wxops CLI for catalog browsing, service
+  debugging, and live file sync into running pods without direct Kubernetes credentials.
+---
+
+Darlane brings on-demand parallel debug pods to every deployed service — no scaffold
+changes, no kubectl juggling. Configure the pod through the portal's Promotion panel,
+then use the `wxops` CLI to browse the catalog, pull up the exact debug commands for
+any service, or stream local file changes directly into the running pod.
+
+{/* truncate */}
+
+## What's New
+
+### Darlane — Per-Environment Parallel Debug Pods *(headline feature)*
+
+A new class of developer capability: ephemeral debug pods that run in parallel with
+the real workload, scoped to a single environment, and fully governed by the same
+GitOps pipeline as every other config change.
+
+#### What a Darlane pod gives you
+
+- **Scale up on demand** — `replicas: 0` means zero cost at rest; scale to `1` when
+  you need it and back to `0` when done
+- **Exec into your actual runtime** — with the real env vars, secrets, and service mesh
+  present (no local simulation)
+- **File-sync from local** — stream changes from your workstation directly into the pod
+  volume; the pod's hot-reload picks them up without a redeploy
+- **Mirror live traffic** — via Mirrord; your local process receives real cluster traffic
+  without re-routing production
+
+#### Architecture: overlay-driven, not scaffold-time
+
+Darlane config lives in the overlay `kustomization.yaml` as a JSON 6902 `op: add`
+patch targeting `spec.parameters.darlane` on the `XTenantApp` resource:
+
+```yaml
+# Minimal patch written by the portal to overlays/dev/kustomization.yaml
+- op: add
+  path: /spec/parameters/darlane
+  value:
+    enabled: true
+    replicas: 0
+    ttl: 4h
+```
+
+Dev overlays are committed directly to `main`. Staging and production overlays open
+a PR with the `portal-managed` label for platform-team review.
+
+#### Promotion panel: Enable Darlane wizard
+
+The **Darlane** button appears on each environment row once the overlay exists.
+
+| Setting | Notes |
+|---------|-------|
+| Replicas | Default 0 (scaled down at rest) |
+| Start command | Free text + preset buttons (uvicorn, flask, air, node — all default port 8080) |
+| File sync | Toggle + mount path + "Seed volume from pod image" checkbox |
+| TTL | 1h / 2h / 4h (default) / 8h / 12h / 24h |
+| Env overrides | Key/value rows injected only into the Darlane pod — for feature flags |
+| Traffic weight | 0–100% of ingress traffic routed to the pod (ingress-enabled apps only) |
+| Sticky session | Cookie name, SameSite, Secure flag (enabled when `trafficWeight > 0`) |
+| Header routing | Route a specific HTTP header to the pod; works with `trafficWeight: 0` |
+| Production gate | `productionOverride` confirmation checkbox (managers and platform-team only) |
+
+Step 2 shows a diff-aware YAML preview labeled `+ added` / `~ changed` / `− removed`
+when reconfiguring an existing Darlane block.
+
+#### Inline debug commands
+
+When Darlane is enabled, the portal shows copy-paste commands:
+
+```bash
+# Exec
+kubectl -n <namespace> exec -it deployment/<app>-darlane -- bash
+
+# Port-forward
+kubectl -n <namespace> port-forward deployment/<app>-darlane 8080:8080
+
+# Traffic mirror (Mirrord)
+mirrord exec --target deployment/<app>-darlane --target-namespace <namespace> -- <cmd>
+
+# File sync (wxops CLI)
+wxops darlane sync <app>
+wxops darlane sync <app> --local ./src --remote /app/src
+```
+
+Deployment naming follows the XTenantApp composition convention:
+`dev` → `{appName}-darlane`, `staging` → `{appName}-staging-darlane`, `production` → `{appName}-production-darlane`.
+
+#### Permission model
+
+| Environment | Who can enable |
+|-------------|----------------|
+| `dev` | Any member of the owning team |
+| `staging` | `{org}:Managers` sub-group or `platform-team` |
+| `production` | `{org}:Managers` sub-group or `platform-team` |
+
+
+### `wxops` CLI *(headline feature)*
+
+A standalone terminal client for the portal — the same REST API as the browser,
+without opening a browser.
+
+#### Installation
+
+```bash
+# Linux amd64
+curl -L https://<portal-host>/api/v1/cli/download/linux/amd64 \
+  -o /usr/local/bin/wxops && chmod +x /usr/local/bin/wxops
+
+# macOS arm64
+curl -L https://<portal-host>/api/v1/cli/download/darwin/arm64 \
+  -o /usr/local/bin/wxops && chmod +x /usr/local/bin/wxops
+
+# Or build locally from the repo root
+make cli-install
+```
+
+Available targets: `linux-amd64`, `linux-arm64`, `darwin-amd64`, `darwin-arm64`.
+
+#### Commands
+
+**`wxops login`** — PKCE browser flow. Saves the session token to
+`~/.wxops/credentials.json`. For CI, set `WXOPS_PORTAL_URL` + `WXOPS_TOKEN` env
+vars instead — `WXOPS_TOKEN` takes precedence over the credentials file.
+
+**`wxops catalog list`**
+
+```
+wxops catalog list [--kind Component] [--lifecycle production]
+```
+
+Tabwriter output across all entity kinds. Filter by kind and/or lifecycle.
+
+**`wxops catalog get <kind> <name>`**
+
+Full details for a single entity — name, lifecycle, owner, type, description, source.
+
+**`wxops debug <service> [--env dev|staging|production]`**
+
+Resolves the entity, shows per-environment Darlane state, and prints ready-to-run
+`kubectl`, `mirrord`, and `wxops darlane sync` commands:
+
+```
+$ wxops debug payment-api
+
+Darlane debug  payment-api
+Namespace       tenant-wxops
+Deployment      payment-api-darlane
+Lifecycle       production
+
+Darlane status
+  dev          ✓  enabled
+  staging      ·  overlay exists — Darlane not enabled
+  production   —  no overlay
+```
+
+**`wxops darlane sync <app>`**
+
+Watches a local directory with `fsnotify`, debounces rapid changes, and streams
+a `tar` archive into the Darlane pod using `kubectl exec … tar xf -`.
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--local` | `.` | Local directory to watch |
+| `--remote` | `/app` | Target path inside the pod |
+| `--env` | `dev` | Target environment |
+| `--exclude` | — | Glob patterns to ignore |
+| `--debounce` | `300ms` | Wait after last change before syncing |
+| `--namespace` | derived | Override the K8s namespace |
+| `--deployment` | derived | Override the deployment name |
+
+**`wxops version`** — prints `wxops version v0.4.0`.
+
+
+### CLI Download Card — Overview Dashboard
+
+The portal Overview page now includes a compact CLI download card in the right-hand
+sticky column (below the Identity panel). It lists download links for all platform
+targets and links to the CLI documentation.
+
+
+## Upgrade Notes
+
+No database migrations. No new required environment variables.
+
+The `wxops` CLI binary is released alongside the portal image. Existing sessions
+are fully compatible — users who have already authenticated can re-login with v0.4.0
+and the credentials file is reused.
+
+
+## Resources
+
+- [Darlane reference](/docs/darlane/overview)
+- [CLI reference](/docs/cli/overview)
+- [Architecture](/docs/concepts/architecture)
+- [Deployment guide](/docs/getting-started/deployment)
+- [Environment variables](/docs/getting-started/environment-variables)

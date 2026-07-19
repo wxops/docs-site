@@ -1,0 +1,422 @@
+/* ── Fonts ──────────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Fira+Code:wght@400;500;600;700&display=swap');
+
+/*
+  Dracula palette reference
+  ─────────────────────────
+  Background   #282a36
+  Current Line #44475a
+  Foreground   #f8f8f2
+  Comment      #6272a4
+  Purple       #bd93f9  ← primary
+  Cyan         #8be9fd  ← links / accent
+  Green        #50fa7b
+  Pink         #ff79c6
+  Red          #ff5555
+  Orange       #ffb86c
+  Yellow       #f1fa8c
+*/
+
+/* ── Light theme ────────────────────────────────────────────────────────── */
+:root {
+  /* Primary — Dracula purple, toned for light backgrounds */
+  --ifm-color-primary:         #8b5cf6;
+  --ifm-color-primary-dark:    #7c3aed;
+  --ifm-color-primary-darker:  #6d28d9;
+  --ifm-color-primary-darkest: #5b21b6;
+  --ifm-color-primary-light:   #a78bfa;
+  --ifm-color-primary-lighter: #c4b5fd;
+  --ifm-color-primary-lightest:#ddd6fe;
+
+  /* Typography */
+  --ifm-font-family-base:      'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --ifm-font-family-monospace: 'Fira Code', 'JetBrains Mono', monospace;
+  --ifm-font-size-base:        15px;
+  --ifm-code-font-size:        0.925rem;
+  --ifm-line-height-base:      1.65;
+  --ifm-heading-font-weight:   700;
+  --ifm-font-weight-semibold:  600;
+
+  /* Surfaces */
+  --ifm-background-color:         #faf8ff;
+  --ifm-background-surface-color: #f3f0ff;
+  --ifm-navbar-background-color:  #ffffff;
+  --ifm-footer-background-color:  #1e1f2e;
+  --ifm-toc-border-color:         #e4dcfb;
+  --ifm-hr-border-color:          #e4dcfb;
+  --ifm-table-border-color:       #e4dcfb;
+  --ifm-pre-background:           #f3f0ff;
+  --ifm-code-background:          #ede9fe;
+
+  --docusaurus-highlighted-code-line-bg: rgba(139, 92, 246, 0.08);
+}
+
+/* ── Dark theme — canonical Dracula ────────────────────────────────────── */
+[data-theme='dark'] {
+  /* Primary — Dracula lavender */
+  --ifm-color-primary:         #bd93f9;
+  --ifm-color-primary-dark:    #a97ef7;
+  --ifm-color-primary-darker:  #9a6ff6;
+  --ifm-color-primary-darkest: #7d52f4;
+  --ifm-color-primary-light:   #cca8fb;
+  --ifm-color-primary-lighter: #d6b8fc;
+  --ifm-color-primary-lightest:#e8d5fe;
+
+  /* Dracula surfaces */
+  --ifm-background-color:         #282a36;
+  --ifm-background-surface-color: #44475a;
+  --ifm-navbar-background-color:  #21222c;
+  --ifm-footer-background-color:  #191926;
+  --ifm-toc-border-color:         rgba(255, 255, 255, 0.10);
+  --ifm-hr-border-color:          rgba(255, 255, 255, 0.10);
+  --ifm-table-border-color:       rgba(255, 255, 255, 0.10);
+  --ifm-pre-background:           #1e1f2b;
+  --ifm-code-background:          rgba(68, 71, 90, 0.55);
+
+  /* Dracula foreground & comment */
+  --ifm-color-content:           #f8f8f2;
+  --ifm-color-content-secondary: #6272a4;
+
+  /* Dracula cyan for links */
+  --ifm-link-color:       #8be9fd;
+  --ifm-link-hover-color: #bd93f9;
+
+  --docusaurus-highlighted-code-line-bg: rgba(189, 147, 249, 0.12);
+}
+
+/* ── Global typography ──────────────────────────────────────────────────── */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv11", "ss01";
+}
+
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  border-bottom: 1px solid var(--ifm-toc-border-color);
+  padding-bottom: 0.4rem;
+  margin-top: 2.5rem;
+}
+
+/* ── Navbar ─────────────────────────────────────────────────────────────── */
+.navbar {
+  box-shadow: 0 1px 0 0 rgba(189, 147, 249, 0.15);
+  border-bottom: none;
+}
+
+[data-theme='dark'] .navbar {
+  box-shadow:
+    0 1px 0 0 rgba(189, 147, 249, 0.22),
+    0 4px 32px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme='dark'] .navbar__title {
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: #f8f8f2;
+}
+
+[data-theme='light'] .navbar__title {
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+[data-theme='dark'] .theme-doc-sidebar-container {
+  background: #21222c;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+[data-theme='dark'] .menu__link--active {
+  color: #bd93f9;
+  background: rgba(189, 147, 249, 0.1);
+}
+
+[data-theme='dark'] .menu__link--active:hover {
+  background: rgba(189, 147, 249, 0.15);
+}
+
+[data-theme='dark'] .menu__link:hover {
+  background: rgba(189, 147, 249, 0.06);
+}
+
+[data-theme='dark'] .menu__caret::before {
+  filter: brightness(1.5);
+}
+
+/* ── Code blocks ────────────────────────────────────────────────────────── */
+pre, .prism-code {
+  font-size: 1.0525rem !important;  /* ~ 17px */
+  line-height: 1.7 !important;
+  font-feature-settings: "calt", "liga", "zero";  /* Fira Code ligatures */
+  font-variant-ligatures: contextual;
+}
+
+[data-theme='dark'] .prism-code {
+  background: #1e1f2b !important;
+}
+
+[data-theme='dark'] pre {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1.25rem 1.5rem;
+}
+
+[data-theme='light'] pre {
+  padding: 1.25rem 1.5rem;
+}
+
+code {
+  border-radius: 4px;
+  font-size: 0.925em;
+  padding: 0.15em 0.45em;
+  font-feature-settings: "calt", "liga", "zero";
+  font-variant-ligatures: contextual;
+}
+
+[data-theme='dark'] :not(pre) > code {
+  background: rgba(68, 71, 90, 0.6);
+  color: #bd93f9;
+  border: 1px solid rgba(189, 147, 249, 0.2);
+}
+
+[data-theme='light'] :not(pre) > code {
+  background: #ede9fe;
+  color: #7c3aed;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+table {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+}
+
+[data-theme='dark'] table th {
+  background: #21222c;
+  color: #bd93f9;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+[data-theme='dark'] table tr:nth-child(2n) {
+  background: rgba(40, 42, 54, 0.6);
+}
+
+[data-theme='dark'] table td {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Zoomable: shared hover + expand badge ───────────────────────────────── */
+.docusaurus-mermaid-container,
+.img-zoomable-wrap {
+  cursor: zoom-in;
+  position: relative;
+  transition: opacity 0.15s ease;
+}
+
+.docusaurus-mermaid-container:hover,
+.img-zoomable-wrap:hover {
+  opacity: 0.88;
+}
+
+.docusaurus-mermaid-container::after {
+  content: '⤢ expand';
+  position: absolute;
+  top: 0.6rem;
+  right: 0.75rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ifm-color-primary);
+  background: var(--ifm-background-color);
+  border: 1px solid var(--ifm-toc-border-color);
+  border-radius: 4px;
+  padding: 0.2em 0.55em;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.docusaurus-mermaid-container:hover::after {
+  opacity: 1;
+}
+
+/* ── Zoomable image wrapper ──────────────────────────────────────────────── */
+.img-zoomable-wrap {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 1.5rem auto;
+  line-height: 0;
+}
+
+.img-zoomable-wrap img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  cursor: zoom-in;
+}
+
+/* ── Mermaid diagrams ────────────────────────────────────────────────────── */
+
+.docusaurus-mermaid-container {
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+
+[data-theme='light'] .docusaurus-mermaid-container svg {
+  background: #f9f8ff;
+  border-radius: 8px;
+  padding: 1rem;
+  border: 1px solid rgba(139, 92, 246, 0.12);
+}
+
+[data-theme='dark'] .docusaurus-mermaid-container svg {
+  background: #1e1f2b;
+  border-radius: 8px;
+  padding: 1rem;
+  border: 1px solid rgba(189, 147, 249, 0.15);
+}
+
+/* ── Mermaid lightbox ────────────────────────────────────────────────────── */
+.mermaid-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.mermaid-lightbox-overlay.mermaid-lightbox-visible {
+  opacity: 1;
+}
+
+.mermaid-lightbox-modal {
+  position: relative;
+  background: #1e1f2b;
+  border: 1px solid rgba(189, 147, 249, 0.25);
+  border-radius: 14px;
+  padding: 2.5rem 2rem 1.5rem;
+  max-width: 92vw;
+  max-height: 88vh;
+  width: 100%;
+  overflow: auto;
+  box-shadow:
+    0 0 0 1px rgba(189, 147, 249, 0.1),
+    0 24px 80px rgba(0, 0, 0, 0.6),
+    0 0 60px rgba(189, 147, 249, 0.08);
+  transform: scale(0.96);
+  transition: transform 0.2s ease;
+}
+
+.mermaid-lightbox-visible .mermaid-lightbox-modal {
+  transform: scale(1);
+}
+
+.mermaid-lightbox-svg svg {
+  width: 100% !important;
+  height: auto !important;
+  max-width: 100%;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.mermaid-lightbox-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.875rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #6272a4;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.mermaid-lightbox-close:hover {
+  color: #f8f8f2;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.mermaid-lightbox-hint {
+  margin: 1rem 0 0;
+  text-align: center;
+  font-size: 0.72rem;
+  color: #44475a;
+  letter-spacing: 0.04em;
+}
+
+/* ── Admonitions ─────────────────────────────────────────────────────────── */
+[data-theme='dark'] .alert {
+  border-left-width: 3px;
+}
+
+[data-theme='dark'] .alert--info    { background: rgba(139, 233, 253, 0.06); border-color: rgba(139, 233, 253, 0.35); }
+[data-theme='dark'] .alert--warning { background: rgba(241, 250, 140, 0.06); border-color: rgba(241, 250, 140, 0.35); }
+[data-theme='dark'] .alert--danger  { background: rgba(255,  85,  85, 0.06); border-color: rgba(255,  85,  85, 0.35); }
+[data-theme='dark'] .alert--success { background: rgba( 80, 250, 123, 0.06); border-color: rgba( 80, 250, 123, 0.35); }
+
+/* ── TOC ─────────────────────────────────────────────────────────────────── */
+[data-theme='dark'] .table-of-contents__link--active {
+  color: #bd93f9;
+  font-weight: 600;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+.footer {
+  border-top: 1px solid rgba(189, 147, 249, 0.15);
+}
+
+[data-theme='dark'] .footer {
+  background: #191926;
+}
+
+[data-theme='dark'] .footer__title {
+  color: #bd93f9;
+  font-weight: 700;
+}
+
+[data-theme='dark'] .footer__link-item:hover {
+  color: #bd93f9;
+}
+
+/* ── Pagination ──────────────────────────────────────────────────────────── */
+[data-theme='dark'] .pagination-nav__link {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='dark'] .pagination-nav__link:hover {
+  border-color: #bd93f9;
+  background: rgba(189, 147, 249, 0.06);
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+[data-theme='dark'] * {
+  scrollbar-width: thin;
+  scrollbar-color: #44475a #282a36;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar       { width: 6px; height: 6px; }
+[data-theme='dark'] ::-webkit-scrollbar-track  { background: #282a36; }
+[data-theme='dark'] ::-webkit-scrollbar-thumb  { background: #44475a; border-radius: 3px; }
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover { background: #6272a4; }
