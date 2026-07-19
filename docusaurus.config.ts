@@ -3,6 +3,10 @@ import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 import remarkImageSize from "./src/plugins/remark-image-size";
 
+// BASE_URL is injected by the GitHub Actions configure-pages step.
+// Falls back to "/" for local dev and custom-domain deployments.
+const baseUrl = process.env.BASE_URL ?? "/";
+
 const config: Config = {
   clientModules: [require.resolve("./src/clientModules/mermaidLightbox.ts")],
 
@@ -50,7 +54,7 @@ const config: Config = {
   },
 
   url: "https://docs.wxops.cloud",
-  baseUrl: "/",
+  baseUrl,
 
   organizationName: "wxops",
   projectName: "wxops-portal",
