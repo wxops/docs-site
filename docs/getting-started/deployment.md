@@ -13,7 +13,7 @@ The W'xOps Portal container image and the supporting Helm charts are hosted on a
 | Resource | Registry | Status |
 |---|---|---|
 | Portal container image | `gitea.xeusnguyen.xyz/platform-team/wxops-portal-v2` | Private |
-| Helm charts (`pinniped`, `portal`) | `https://kubewekend.xeusnguyen.xyz` | Public |
+| Helm charts (`pinniped`) | `https://kubewekend.xeusnguyen.xyz` | Public |
 
 An open-source release is planned. Until then, access is granted on a case-by-case
 basis for enterprise deployments.
