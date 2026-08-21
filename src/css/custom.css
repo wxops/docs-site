@@ -420,3 +420,33 @@ table {
 [data-theme='dark'] ::-webkit-scrollbar-track  { background: #282a36; }
 [data-theme='dark'] ::-webkit-scrollbar-thumb  { background: #44475a; border-radius: 3px; }
 [data-theme='dark'] ::-webkit-scrollbar-thumb:hover { background: #6272a4; }
+
+/* ── Announcement bar ────────────────────────────────────────────────────── */
+/* Docusaurus defaults this to a thin 30px strip at desktop widths (its own
+   --docusaurus-announcement-bar-height media query). Override to `auto` so
+   padding actually grows the bar instead of getting clipped, and bump the
+   text size/weight so it reads as a real banner, not a thin ticker. */
+.theme-announcement-bar,
+:root {
+  --docusaurus-announcement-bar-height: auto;
+}
+
+.theme-announcement-bar {
+  padding: 0.9rem 1.25rem;
+}
+
+.theme-announcement-bar div {
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .theme-announcement-bar {
+    padding: 0.75rem 1rem;
+  }
+
+  .theme-announcement-bar div {
+    font-size: 0.9rem;
+  }
+}

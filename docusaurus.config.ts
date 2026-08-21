@@ -112,15 +112,30 @@ const config: Config = {
       {
         docs: {
           sidebarPath: "./sidebars.ts",
-          editUrl: "https://github.com/wxops/wxops-docs/tree/main/",
+          editUrl: "https://github.com/wxops/docs-site/tree/main/",
           showLastUpdateTime: true,
           showLastUpdateAuthor: true,
           remarkPlugins: [remarkImageSize],
-          lastVersion: "current",
+          // "current" (the docs/ folder) is unreleased, in-progress content — the
+          // official Docusaurus "Next" pattern: https://docusaurus.io/docs/versioning
+          // Served at /docs/next/, never the site's default landing version.
+          // lastVersion is the real last tagged release, served at bare /docs/.
+          // Older snapshots live in versioned_docs/ and are served at /docs/<version>.
+          lastVersion: "0.5.x",
           versions: {
             current: {
+              label: "Next",
+              path: "next",
+              badge: true,
+            },
+            "0.5.x": {
+              label: "0.5.x",
+              badge: true,
+            },
+            "0.4.x": {
               label: "0.4.x",
               badge: true,
+              banner: "unmaintained",
             },
           },
         },
@@ -156,6 +171,17 @@ const config: Config = {
       defaultMode: "dark",
       disableSwitch: false,
       respectPrefersColorScheme: true,
+    },
+
+    // Bump the id (announcementBar-N) whenever the message changes, so it
+    // reappears for visitors who already dismissed an earlier one.
+    announcementBar: {
+      id: "announcementBar-0.6.x-oss",
+      content:
+        "🚀🚀🚀 From 0.6.x &mdash; W&apos;xOps is the open source and open for contribution process. 🚀🚀🚀",
+      backgroundColor: "#8b5cf6",
+      textColor: "#ffffff",
+      isCloseable: true,
     },
 
     image: "img/wxops-social.png",
@@ -252,7 +278,9 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} W'xOps Platform Team. Built with Docusaurus.`,
+      // Two lines: team attribution, then the same "from Vietnam" identity the
+      // landing site carries (wxops.github.io Footer.tsx) so both properties match.
+      copyright: `Copyright © ${new Date().getFullYear()} W'xOps Platform Team. Built with Docusaurus.<br />Made with ❤️ from Vietnam 🇻🇳`,
     },
 
     prism: {
