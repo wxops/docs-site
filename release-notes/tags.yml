@@ -32,3 +32,8 @@ security:
   label: Security
   permalink: /security
   description: Security model, RBAC, and Pinniped integration.
+
+observability:
+  label: Observability
+  permalink: /observability
+  description: Runtime status, Grafana deep links, alerts, and the LGTM stack.

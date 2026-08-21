@@ -1,0 +1,131 @@
+---
+slug: v0-5-0-release
+title: "W'xOps Portal v0.5.0 — Runtime Observability"
+authors: [xeus]
+tags: [release, platform, observability, security]
+image: /img/wxops-social.png
+date: 2026-08-14
+description: >
+  v0.5.0 closes the loop between what Git says should be deployed and what is
+  actually running — live ArgoCD and Crossplane status per environment, one-click
+  Grafana deep links for logs, traces, CPU, memory and profiles, active alerts,
+  and session recovery that no longer costs you your place.
+---
+
+The portal has always known what *should* be deployed — the overlay in Git, the image
+tag written back by Image Updater. It could not tell you what *is* running. v0.5.0
+closes that loop: **intended state from Git, observed state from the cluster, and one
+click into the signal that explains the difference.**
+
+Everything here is read with your own Kubernetes credentials. A user who cannot
+`kubectl get application` cannot see it in the portal either.
+
+{/* truncate */}
+
+## Runtime Status — real state, not inference
+
+The old Runtime card guessed at environments by matching Deployment name suffixes. It
+never read ArgoCD or Crossplane, so it could not answer the question developers
+actually ask: *did my deploy land?*
+
+It is now a per-environment panel backed by two real sources:
+
+| Source | Answers |
+|---|---|
+| ArgoCD `Application` | Did CD deliver? Sync state, health, the revision that landed, last operation phase |
+| Crossplane `XTenantApp` | Did the platform provision it? Created, ready, live URL, running image |
+
+Each environment renders as a row with status chips, the short revision, the image tag,
+and the live URL — grouped by cluster when more than one is registered.
+
+Readiness comes from the composition's own `.status.ready` write-back rather than
+Crossplane's `Ready` condition. The latter lags behind reality because of watch-circuit
+throttling, so a service already serving traffic could still show as not-ready.
+
+### Missing is not broken
+
+A service that has not been promoted yet is not a failure, and the panel says so.
+Each cell reports one of three distinct states instead of collapsing everything into an
+error:
+
+| State | Meaning |
+|---|---|
+| `not-found` | Not deployed to this environment yet — normal for an un-promoted service |
+| `forbidden` | The RBAC prerequisite has not been applied — an operator action, not an outage |
+| `unreachable` | The cluster or API server did not answer |
+
+One dead cluster degrades only its own cells.
+
+## Grafana deep links, scoped per environment
+
+Every environment row carries links into Grafana Explore for **logs, traces, CPU,
+memory and profiles** — each scoped to that exact service *and* environment.
+
+That scoping matters more than it looks. Dev, staging and production share one
+namespace and one `app` label, so an unscoped query blends all three together. The pod
+name is the only discriminator available, and `{app}-` as a prefix matches every
+environment *plus* the Darlane twin — so dev carries an explicit exclusion rather than
+just a prefix.
+
+Metrics are split into CPU and Memory rather than one combined link. Memory uses
+`container_memory_working_set_bytes` — the figure the kernel OOM killer actually
+evaluates — not `container_memory_usage_bytes`, which includes reclaimable page cache
+and routinely looks alarming for a workload nowhere near being killed.
+
+An environment the platform does not create produces **no link at all**, rather than a
+query that silently matches nothing.
+
+## Active alerts
+
+With `ALERTMANAGER_URL` configured, the Runtime tab shows what is firing right now,
+above the environment panel — *"is this broken right now?"* outranks *"what is
+deployed?"*. Critical-first, with severity, firing duration, the affected pod, and the
+rule's runbook link.
+
+Deliberately minimal: one read, no silencing or acknowledgement. Those stay in
+Alertmanager's own UI, and leaving the variable unset disables the panel entirely.
+
+## Session recovery without signing out
+
+When a Pinniped session can no longer be exchanged for cluster credentials, the
+affected panel now shows **Session expired** with a **Sign in again** button — instead
+of a bare `HTTP 401` that left you to work out that Settings → Sign out → Sign in was
+the fix.
+
+The button starts a fresh OIDC flow and **returns you to the exact page you were on**.
+Nothing is signed out; the stale cookie is replaced in place.
+
+Sign-in itself got quieter too: the dashboard now streams behind a skeleton instead of
+holding a blank page, and a failed login explains itself instead of printing a raw JSON
+error.
+
+## Upgrading
+
+**Spoke cluster RBAC is required** for live status. Because reads happen as the user,
+each tenant needs two bindings that did not exist before — a `ClusterRoleBinding` to
+`tenant-platform-reader` (`XTenantApp` is cluster-scoped, so a namespaced RoleBinding
+cannot reach it) and a `RoleBinding` in the `argocd` namespace. Manifests are in
+[Production Deployment](/docs/getting-started/deployment).
+
+Without them nothing breaks — every cell renders "Cluster RBAC not applied" and the
+rest of the page is unaffected.
+
+**`NEXT_PUBLIC_ARGOCD_URL` is removed.** Replace it with the backend variable
+`ARGOCD_URL`. Changing the ArgoCD URL no longer requires an image rebuild. All the new
+settings are optional and degrade to "feature hidden" when unset — see
+[Environment Variables](/docs/getting-started/environment-variables).
+
+## Also in this release
+
+- **First test suites** — 25 passing tests across three packages, covering deep-link
+  construction and scoping, query-injection sanitisation, alert filtering, and
+  open-redirect rejection on the post-login return path.
+- Fixed an ArgoCD link on the Edit Config page that pointed at a non-existent
+  Application name and 404'd.
+- Fixed runbook Docs attached to a System being counted in the tab badge but never
+  rendered.
+- Cluster tabs now check HTTP status before parsing, so an expired session surfaces as
+  a re-login prompt rather than a generic error.
+
+Full detail, including the deep-link selectors and the known platform limitations, is
+in [Runtime Observability](/docs/platform/observability).
