@@ -49,6 +49,7 @@ Sized via `dedicatedCluster.*` fields.
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
+| `cluster` | `string` | | `"default"` | `provider-kubernetes` `ProviderConfig` to compose resources through. `default` (the hub cluster) is the only one wired up today — leaving this unset is behavior-neutral. Multi-cluster targeting is not yet functional; no spoke `ProviderConfig` exists yet. |
 | `tier` | `string` | | `"shared"` | `shared` or `dedicated`. |
 | `environment` | `string` | | `"dev"` | One of `dev`, `staging`, `prod`. For `shared`, filters the pool to clusters matching this environment. For `dedicated`, passed to the child cluster. |
 | `dedicatedCluster.instances` | `integer` (1–9) | | `1` | PostgreSQL instances. `1` = standalone, `3` = HA. Only used when `tier: dedicated`. |
@@ -83,6 +84,21 @@ vault kv metadata delete tenants/{owner}/databases/{dbName}/connection-creds
 ```
 :::
 
+
+## `status`
+
+Read these fields directly rather than polling Crossplane's own composite `Ready`
+condition, which is unreliable on this platform's Crossplane v2.3 + function-kcl v0.12.1
+combination.
+
+| Field | Type | Description |
+|---|---|---|
+| `status.clusterRef` | `string` | Resolved CNPG cluster name this database is provisioned on. Written on first assignment and reused on subsequent reconciles (sticky) — other `XTenantDatabase` XRs read this via `function-extra-resources` to count databases per cluster for load-balanced pool assignment. |
+| `status.clusterNamespace` | `string` | Namespace of the resolved cluster. |
+| `status.tier` | `string` | Resolved tier — `shared`, `dedicated`, or explicit (`clusterRef` set directly). |
+| `status.dbName` | `string` | PostgreSQL database name, echoed for cross-XR collision checks. |
+| `status.created` | `boolean` | True once every composed resource has been observed at least once. Indicates provisioning has started, not that it succeeded. |
+| `status.ready` | `boolean` | True when the database is actually usable: it exists, its owning role exists, and the connection Secret has materialized (plus, on `tier: dedicated`, the child cluster is up). The Vault credential push (`PushSecret`) is deliberately excluded — if it lags, applications can still connect with the Kubernetes Secret. |
 
 ## Credential flow
 

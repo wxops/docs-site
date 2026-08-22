@@ -11,6 +11,17 @@ API, database, team, and document in your organization. It reads
 Backstage-compatible YAML from your `gitops-infra` repository — no database,
 no plugin, no catalog server.
 
+:::tip[What W'xOps took from Backstage]
+The catalog YAML shape and core kinds (Component, API, Resource, System, Group, User) — not the
+runtime. See [Backstage Concepts, Not Backstage Runtime](../concepts/ecosystem#backstage-concepts-not-backstage-runtime)
+for what that split actually means. The payoff: existing Backstage `catalog-info.yaml` files are
+mostly already the right shape, so migrating in is trimming and relabeling, not a rebuild.
+
+`Doc` is W'xOps' own addition on top of that borrowed shape — a kind Backstage doesn't have, for
+linking an RFC, ADR, or runbook straight to the service it documents. More on why:
+[Documentation Strategy](./documentation-strategy).
+:::
+
 ## How It Works
 
 ```mermaid
@@ -44,9 +55,24 @@ flowchart LR
 | `System` | A product made up of related components |
 | `Group` | A team or organization unit |
 | `User` | A team member |
-| `Location` | A pointer to a directory of entity files |
-| `Template` | A scaffold template entry |
-| `Document` | An RFC, ADR, or Runbook |
+| `Doc` | An RFC, ADR, or Runbook (labeled "Document" in the portal UI) |
+
+:::info[Room to grow: not every Backstage kind is implemented yet]
+The portal validates, stores, and lets you filter or register by only the kinds in the table
+above. Backstage's own catalog spec — which this YAML shape is otherwise compatible with — also
+defines `Location` (federating multiple entity sources) and `Template` (scaffolder-as-entity).
+Neither exists here today: a file with `kind: Location` or `kind: Template` wouldn't be rejected,
+but nothing creates, validates, lists, or renders one.
+
+`Location` isn't a near-term need — the portal already reads the whole `service-catalog/`
+directory as one dataset, so there's nothing to federate. `Template` is the more interesting one:
+golden-path templates today are plain `template.yaml` files in `wxops-templates`, entirely outside
+the catalog. A `kind: Template` catalog entity could eventually carry the usage data the catalog
+is already positioned to track — which templates are actually recommended for a team's stack
+based on real adoption, which are falling out of use, which get scaffolded and then immediately
+deprecated — turning template choice into something driven by observed behavior instead of a
+static list. Not built, not scheduled — recorded here as a real direction, not a rejected idea.
+:::
 
 ## Entity File Format
 

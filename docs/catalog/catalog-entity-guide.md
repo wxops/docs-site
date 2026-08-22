@@ -12,7 +12,7 @@ Every entity must have:
 
 ```yaml
 apiVersion: backstage.io/v1alpha1   # always this exact value
-kind: Component                      # see table below
+kind: Component                      # see Entity Types in service-catalog.md
 metadata:
   name: my-service                   # lowercase, hyphen-separated
 spec:
@@ -183,7 +183,7 @@ An RFC, ADR, or Runbook linked to a Component.
 
 ```yaml
 apiVersion: backstage.io/v1alpha1
-kind: Document
+kind: Doc
 metadata:
   name: rfc-001-payment-retry-strategy
   description: "Retry strategy for payment gateway failures."
@@ -191,13 +191,15 @@ metadata:
     wxops.cloud/gitea-repo: wxops/payment-api
     wxops.cloud/doc-path: docs/rfcs/001-retry-strategy.md
 spec:
-  type: rfc             # rfc | adr | runbook
+  docType: rfc           # rfc | adr | runbook | documentation
   lifecycle: active
   owner: group:wxops/rocket-team
   system: payments
   relatedTo:
     - component:payment-api
 ```
+
+The `kind:` value is `Doc` — the portal's UI labels this kind "Document" (the register-entity-form dropdown, the catalog filter), but the field written to the YAML file itself is the shorter `Doc`. `docType` is also its own field, distinct from the generic `spec.type` used by Component/API/Resource — a `Doc` entity with `type:` instead of `docType:` fails validation with `missing spec.docType`.
 
 The portal fetches the Markdown from Gitea and renders it on the entity page
 with syntax highlighting and Mermaid diagram support.
@@ -210,3 +212,4 @@ with syntax highlighting and Mermaid diagram support.
 | `dependsOn: payment-db` | `dependsOn: - resource:payment-db` |
 | Naming a Resource entity `payment-api-vault` | Entity name in catalog can be anything; Vault path is derived from the annotation |
 | Exposing gitops-infra PR URLs in descriptions | PR links to gitops-infra are internal — use titles/status only |
+| `kind: Document` / `spec.type: rfc` on a Doc entity | `kind: Doc`, `spec.docType: rfc` — `Doc` is its own kind with its own `docType` field, not the generic `type` Component/API/Resource use |

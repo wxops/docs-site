@@ -29,6 +29,7 @@ real Kubernetes resources on the spoke cluster.
 | `gitea-org` | `XGiteaOrg` | `platform.wxops.cloud/v1alpha1` | Gitea organisation |
 | `gitea-team` | `XGiteaTeam` | `platform.wxops.cloud/v1alpha1` | Team within a Gitea org |
 | `gitea-user` | `XGiteaUser` | `platform.wxops.cloud/v1alpha1` | Gitea user account |
+| `random-password` | `XRandomPassword` | `platform.wxops.cloud/v1alpha1` | Standalone random password generator — a small utility XR, not composed by any of the above |
 
 ## XTenantApp — What It Composes
 

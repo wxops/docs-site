@@ -19,6 +19,7 @@ detail gets written up as the docs site itself gets refined, not all at once her
 | v0.3.0–v0.3.1 | Lifecycle promotion UI, command palette, dark theme |
 | v0.4.0–v0.4.3 | `wxops` CLI + Darlane per-environment debug pods, CLI download proxy |
 | v0.5.0 | Runtime Observability — live ArgoCD & Crossplane status, Grafana deep links, active alerts |
+| v0.5.1 | Observability Completion — real application metrics (per-language Prometheus contract, `ServiceMonitor` emission, a Monitoring toggle that now actually works — the previous version silently did nothing, wrong Prometheus wiring — and one shared dashboard). Also: a catalog completeness score, and a rebuilt CI/releases/dependencies view with search, filters, and real pagination for teams shipping daily. |
 
 Full history in the [release notes](/release-notes), which cover every version from v0.1.0.
 
@@ -26,7 +27,6 @@ Full history in the [release notes](/release-notes), which cover every version f
 
 | Version | Status | Headline |
 |---|---|---|
-| v0.5.1 | Landed, pending release | Observability Completion — real application metrics (per-language contract, `ServiceMonitor` emission, Monitoring toggle, shared dashboard). Code-complete across all four repos. Also: catalog completeness score (a per-entity quality badge) and dependency comparison (diff a service's current dependencies against any past release). |
 | v0.6.0 | Planned | Refactor, modularization, and the first public open-source cut — Helm chart and Docker image for a self-serve quickstart. |
 | Beyond v0.6.0 | Adoption-driven, not scheduled | Security & compliance, SRE & incident response, developer experience, cross-tenant visibility, multi-cluster. |
 

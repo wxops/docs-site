@@ -25,6 +25,18 @@ No password field is needed. Initial user passwords are auto-generated.
 
 All kinds are in group `platform.wxops.cloud/v1alpha1`, cluster-scoped.
 
+## `status` — shared contract
+
+All four are Terraform-backed (not `function-kcl`), and share the same two fields with
+one real quirk worth knowing before you poll them:
+
+| Field | Type | Description |
+|---|---|---|
+| `status.created` | `boolean` | True once the Terraform apply has completed and written state, derived from the presence of the resource's ID output. **Absent — not `false` — until the first successful apply**, since the patch that sets it is skipped while its source output doesn't exist yet. Treat absent as false. This is the one place these Terraform-backed packages' contract differs from the `function-kcl` packages (`tenant-app`, `tenant-database`, `platform-database-clusters`), which always emit an explicit `false`. |
+| `status.ready` | `boolean` | Equal to `created` by construction — a Gitea org/team/user/repo either exists or doesn't, there's no rollout phase — exposed under the same name every other W'xOps package uses so consumers have one field to poll regardless of kind. **Caveat:** reflects the *last successful* apply. If a later apply fails, the outputs persist, so `ready` stays `true` while the underlying Workspace's `Synced` condition goes `False`. Check `Synced` alongside this field to detect drift or a failing reconcile. |
+
+Each kind also echoes a couple of resource-specific fields — see below.
+
 
 ## XGiteaOrg
 
@@ -50,6 +62,13 @@ Manages a Gitea organisation with visibility and metadata.
 | `repoAdminChangeTeamAccess` | `boolean` | | `false` | Allow repository admins (non-org-admins) to add and remove teams from repositories. |
 | `credentialsSecretRef.name` | `string` | yes | | Secret holding the Gitea admin token. |
 | `credentialsSecretRef.namespace` | `string` | yes | | Namespace of the Secret. |
+
+### `status` (in addition to the shared fields above)
+
+| Field | Type | Description |
+|---|---|---|
+| `status.orgId` | `string` | Gitea's internal numeric organisation ID. |
+| `status.orgName` | `string` | Resolved organisation name, echoed from the Terraform output. |
 
 ### Example
 
@@ -100,6 +119,13 @@ Manages a team inside a Gitea organisation, including managed membership reconci
 | `members` | `string` | | `""` | Comma-separated Gitea usernames. Membership is **reconciled on every sync** — removing a name removes the user from the team. Works for both managed (`XGiteaUser`) and pre-existing users. |
 | `credentialsSecretRef.name` | `string` | yes | | Secret holding the Gitea admin token. |
 | `credentialsSecretRef.namespace` | `string` | yes | | Namespace of the Secret. |
+
+### `status` (in addition to the shared fields above)
+
+| Field | Type | Description |
+|---|---|---|
+| `status.teamId` | `string` | Gitea's internal numeric team ID. |
+| `status.teamName` | `string` | Resolved team name, echoed from the Terraform output. |
 
 ### Example
 
@@ -155,6 +181,13 @@ to `true` so users set their own password on first login.
 | `credentialsSecretRef.name` | `string` | yes | | Secret holding the Gitea admin token. |
 | `credentialsSecretRef.namespace` | `string` | yes | | Namespace of the Secret. |
 
+### `status` (in addition to the shared fields above)
+
+| Field | Type | Description |
+|---|---|---|
+| `status.userId` | `string` | Gitea's internal numeric user ID. |
+| `status.username` | `string` | Resolved Gitea username, echoed from the Terraform output. |
+
 ### Example
 
 ```yaml
@@ -203,6 +236,15 @@ Manages a Gitea repository owned by an organisation.
 | `hasPullRequests` | `boolean` | | `true` | Enable pull requests. |
 | `credentialsSecretRef.name` | `string` | yes | | Secret holding the Gitea admin token. |
 | `credentialsSecretRef.namespace` | `string` | yes | | Namespace of the Secret. |
+
+### `status` (in addition to the shared fields above)
+
+| Field | Type | Description |
+|---|---|---|
+| `status.repoId` | `string` | Gitea's internal numeric repository ID. |
+| `status.cloneUrl` | `string` | HTTPS clone URL for the repository. |
+| `status.sshUrl` | `string` | SSH clone URL for the repository. |
+| `status.htmlUrl` | `string` | Browser URL for the repository. |
 
 ### Example
 

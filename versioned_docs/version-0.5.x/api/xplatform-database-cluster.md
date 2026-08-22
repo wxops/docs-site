@@ -111,6 +111,7 @@ KV2 path — adding `platform/` again would write to `platform/platform/...`.
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
+| `cluster` | `string` | | `"default"` | `provider-kubernetes` `ProviderConfig` to compose resources through. `default` (the hub cluster) is the only one wired up today — leaving this unset is behavior-neutral. Multi-cluster targeting is not yet functional; no spoke `ProviderConfig` exists yet. |
 | `clusterName` | `string` | yes | | CNPG cluster name. Tenants pass this as `clusterRef` in `XTenantDatabase` to target this cluster explicitly. |
 | `namespace` | `string` | yes | | Kubernetes namespace where the CNPG cluster is created. |
 | `instances` | `integer` (1–9) | | `1` | PostgreSQL instances. `1` = standalone (dev/test), `3` = HA with automatic failover. |
@@ -257,6 +258,21 @@ reachable from the cluster during bootstrap. The import is a one-time operation.
 | `bootstrapFrom.sourcePasswordSecretRef.name` | `string` | | Secret with key `password` holding the source superuser password. |
 | `bootstrapFrom.sourcePasswordSecretRef.namespace` | `string` | | |
 
+
+## `status`
+
+Read these fields directly rather than polling Crossplane's own composite `Ready`
+condition, which is unreliable on this platform's Crossplane v2.3 + function-kcl v0.12.1
+combination.
+
+| Field | Type | Description |
+|---|---|---|
+| `status.clusterName` | `string` | CNPG cluster name, echoed from `spec.parameters.clusterName`. |
+| `status.namespace` | `string` | Namespace where the CNPG cluster lives. |
+| `status.shared` | `boolean` | Whether this cluster is in the shared multi-tenant pool. |
+| `status.environment` | `string` | Environment this cluster serves (`dev`, `staging`, `prod`). |
+| `status.created` | `boolean` | True once every composed resource has been observed at least once. Indicates provisioning has started, not that it succeeded. |
+| `status.ready` | `boolean` | True when the cluster can actually serve connections: the CNPG `Cluster` is up, and any enabled pooler is up too — tenants are handed the pooler endpoint, not the cluster's directly. Vault credential seeding and scheduled backups are deliberately excluded from this — neither stops a running cluster from serving. |
 
 ## Required discovery label
 
