@@ -34,6 +34,7 @@ and referenced via `secretsFrom`.
 | `Certificate` (cert-manager) | `ingress.tls.clusterIssuer` set |
 | `ServiceAccount` | `serviceAccount.create: true` |
 | `PersistentVolumeClaim` | `volumes[].create: true` |
+| `ServiceMonitor` or `PodMonitor` | `monitoring.enabled: true` |
 | Darlane `Deployment` (`<app>-dev`) | `darlane.enabled: true` |
 
 
@@ -45,6 +46,7 @@ and referenced via `secretsFrom`.
 |---|---|---|---|---|
 | `appName` | `string` | yes | | Application name. Used as `Deployment`/`Service`/`IngressRoute` name and `app.kubernetes.io/name` label. |
 | `namespace` | `string` | yes | | Target namespace for all composed resources. |
+| `cluster` | `string` | | `"default"` | `provider-kubernetes` `ProviderConfig` to compose resources through. `default` (the hub cluster) is the only one wired up today — leaving this unset is behavior-neutral. Multi-cluster targeting is not yet functional; no spoke `ProviderConfig` exists yet. |
 | `environment` | `string` | | `"dev"` | One of `dev`, `staging`, `prod`. Applied as `wxops.cloud/environment` label — metadata for dashboards and Kyverno policies; does not affect composed resource behavior. |
 | `appFlavor` | `string` | | `"webapp"` | One of `webapp`, `ai`, `ai-webapp`, `geo-webapp`, `search-webapp`. Applied as `wxops.cloud/app-flavor` label for platform automation (e.g. selecting pgvector/postgis extensions). Does not affect this XR's composed resources. |
 | `templateId` | `string` | | | Scaffold template identifier. Applied as `wxops.cloud/template-id` annotation for catalog linking. |
@@ -63,7 +65,7 @@ and referenced via `secretsFrom`.
 | `resources` | `object` | | | `requests`/`limits` × `cpu`/`memory`, passed through verbatim. |
 | `env` | `array<{name, value}>` | | `[]` | Plain (non-secret) environment variables. |
 | `envFrom` | `array<{secretRef\|configMapRef: {name}}>` | | `[]` | Additional `envFrom` sources, merged after `secretsFrom`-managed refs. |
-| `podAnnotations` | `object` | | `{}` | Annotations on the pod template (e.g. Prometheus scraping). |
+| `podAnnotations` | `object` | | `{}` | Annotations on the pod template. **Not** how Prometheus scraping is configured — use `monitoring` below; this platform's Prometheus doesn't watch `prometheus.io/*` annotations. |
 | `deploymentAnnotations` | `object` | | `{}` | Extra annotations on the `Deployment` metadata. |
 | `labels` | `object` | | `{}` | Extra labels on all composed resources. Standard `app.kubernetes.io/*` and `wxops.cloud/*` labels always win — selectors depend on them. |
 | `command` | `array<string>` | | image default | Override container `ENTRYPOINT`. |
@@ -190,6 +192,32 @@ HTTP GET probes against `containerPort`. `liveness` and `readiness` default to e
 | `ingress.tls.clusterIssuer` | `string` | | If set (and `tls.enabled`), emits a cert-manager `Certificate` CR. cert-manager auto-provisions the Secret. Requires cert-manager and the named `ClusterIssuer` in-cluster. |
 | `ingress.auth.enabled` | `boolean` | `false` | Adds `auth-errors` and `forward-auth-redirect` Traefik `Middleware` references — SSO via oauth2-proxy ForwardAuth. Both `Middleware` CRDs must exist in `kube-system`. |
 
+### `monitoring`
+
+Emits a real Prometheus `ServiceMonitor` or `PodMonitor` — the scaffold wizard's Monitoring
+toggle writes only `enabled` and, optionally, `path`; every other field defaults sensibly and
+is exposed here for direct XR authors.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `monitoring.enabled` | `boolean` | `false` | Master toggle. When `false`, no monitor is emitted. |
+| `monitoring.kind` | `string` | `"auto"` | `auto` (`ServiceMonitor` when `service.enabled`, else `PodMonitor`), or an explicit `ServiceMonitor`/`PodMonitor` override. Setting `ServiceMonitor` without a `Service` is a hard render-time failure, not a silent no-op. |
+| `monitoring.port` | `integer` | `containerPort` | Port to scrape. |
+| `monitoring.path` | `string` | `"/metrics"` | HTTP path exposing the metrics. |
+| `monitoring.interval` | `string` | `"30s"` | Scrape interval. |
+| `monitoring.scrapeTimeout` | `string` | `"10s"` | Per-scrape timeout. Must be `<= interval`. |
+| `monitoring.sampleLimit` | `integer` | `5000` | Max samples accepted per scrape. |
+| `monitoring.honorLabels` | `boolean` | `false` | When `true`, labels from the scraped metrics win over Prometheus's own target labels on conflict. |
+| `monitoring.metricRelabelings` | `array` | `[]` | Prometheus `metric_relabel_configs`, applied at ingest. |
+
+:::caution[Per-cluster provider RBAC required]
+Creating a `ServiceMonitor`/`PodMonitor` needs `monitoring.coreos.com` permissions on
+Crossplane's `provider-kubernetes` ServiceAccount — a manual, per-spoke-cluster
+`kubectl apply` of `providers/rbac-provider-kubernetes.yaml`, not carried by any package
+bump. Until it's applied, `monitoring.enabled: true` fails `forbidden` at reconcile —
+visible in this XR's own status/events. See
+[Runtime Observability](../platform/observability#application-metrics) for the full picture.
+:::
 
 ## `darlane` — debug twin Deployment
 
@@ -258,6 +286,27 @@ Same discriminator pattern as main `volumes[]` — set exactly one of `claimName
 | `darlane.serviceAccount.name` | `string` | `{appName}-darlane` | When `create: false`, must reference an existing SA. |
 | `darlane.serviceAccount.annotations` | `object` | `{}` | Workload identity bindings (`eks.amazonaws.com/role-arn`, `iam.gke.io/gcp-service-account`). Ignored when `create: false`. |
 
+
+## `status`
+
+Written back by the composition — read these fields directly rather than polling
+Crossplane's own composite `Ready` condition, which can lag due to `WatchCircuitOpen`
+throttling. All are derived from observed composed-resource state on each reconcile.
+
+| Field | Type | Description |
+|---|---|---|
+| `status.created` | `boolean` | True once the Deployment, Service, and Ingress have been observed in the cluster at least once. Distinguishes "provisioning in progress" (`created: false`) from "exists but not yet healthy" (`created: true, ready: false`). |
+| `status.ready` | `boolean` | True when the core workload (Deployment, Service, Ingress) reports Ready. Scoped to the core workload on purpose — check `dependenciesReady` too before calling the app fully healthy. |
+| `status.dependenciesReady` | `boolean` | True when resources that gate the app being usable end-to-end, but don't gate the workload itself, report Ready — today, the cert-manager `Certificate` when `ingress.tls` is enabled. Split from `ready` so a consumer can render "app is up, TLS still issuing" instead of a blanket "not ready." Does **not** cover database provisioning — `secretsFrom.database` only wires in an existing Secret by name and is never waited on. |
+| `status.namespace` | `string` | Kubernetes namespace where the app is deployed. |
+| `status.image` | `string` | Container image currently configured for the deployment. |
+| `status.url` | `string` | Application URL derived from `ingress.host` (`https://` when `tls.enabled`, `http://` otherwise). Empty when ingress is disabled. |
+| `status.darlane` | `object` | Observed state of the Darlane debug twin. **Absent entirely** when `darlane.enabled: false` — not present-and-empty. |
+| `status.darlane.ready` | `boolean` | True when the `<appName>-darlane` Deployment reports Ready. |
+| `status.darlane.replicas` | `integer` | Observed ready replica count, read from the Deployment provider-kubernetes writes back — not the desired count from `spec`. |
+| `status.darlane.trafficMode` | `string` | Resolved routing for the twin: `none`, `weighted` (TraefikService split), `header` (header-matched IngressRoute), or `both`. |
+| `status.darlane.ttl` | `string` | The configured `darlane.ttl` duration (e.g. `"4h"`), echoed as-is — **not an expiry timestamp**. The composition has no clock; combine with the Deployment's `creationTimestamp` to compute one. Empty when unset. |
+| `status.darlane.serviceAccountName` | `string` | Name of the ServiceAccount the twin runs as, published so RBAC can be bound to it from the GitOps repo — this repo's compositions never emit `Role`/`RoleBinding` themselves. Empty when no ServiceAccount is configured. |
 
 ## Minimal example
 

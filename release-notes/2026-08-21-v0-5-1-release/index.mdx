@@ -1,0 +1,133 @@
+---
+slug: v0-5-1-release
+title: "W'xOps Portal v0.5.1 — Observability Completion"
+authors: [xeus]
+tags: [release, platform, observability, catalog]
+image: /img/wxops-social.png
+date: 2026-08-21
+description: >
+  v0.5.1 closes the gap v0.5.0 left open — every golden-path service now emits
+  real Prometheus metrics behind one shared dashboard, the Monitoring toggle
+  actually does something for the first time, and the CI/releases/dependencies
+  view was rebuilt for teams shipping daily instead of demoing quarterly.
+---
+
+v0.5.0 gave the portal eyes on the cluster: live ArgoCD and Crossplane status, one-click
+Grafana links, active alerts. What it couldn't tell you was how a service was actually
+*performing* — those Grafana links pointed at cAdvisor CPU and memory, not application
+data, because nothing in the platform emitted a real metric. **v0.5.1 closes that gap.**
+
+This is also the first release that isn't portal-only. It spans `wxops-templates`,
+`wxops-core`, `wxops-gitops-infrastructure`, and this repo, in a hard dependency order —
+the portal's Monitoring toggle only does something once the other three are deployed too.
+
+{/* truncate */}
+
+## Real application metrics
+
+Every golden-path template — Go, Node.js, Python — now emits a consistent metric contract
+instead of a hand-rolled `/metrics` with two runtime gauges:
+
+| Metric | Type | Labels |
+|---|---|---|
+| `http_requests_total` | counter | `method`, `path`, `status` |
+| `http_request_duration_seconds` | histogram | `method`, `path` |
+| `http_requests_in_flight` | gauge | — |
+
+`path` is always the route *pattern*, never the raw URL — this platform's Prometheus runs
+with no cluster-wide cardinality limits, so that's the one rule that matters more than any
+other here.
+
+### The Monitoring toggle was silently broken — now it isn't
+
+The scaffold wizard and Edit Config have had a Monitoring checkbox for a while. Enabling it
+wrote `prometheus.io/scrape`, `prometheus.io/port`, and `prometheus.io/path` pod
+annotations — a convention Prometheus only honors through a `kubernetes_sd_config` scrape
+job with matching relabel rules. This platform's `kube-prometheus-stack` has an empty
+`additionalScrapeConfigs`. **The toggle had done nothing since it shipped.**
+
+It now writes `spec.parameters.monitoring` directly on the `XTenantApp`, and the Crossplane
+composition turns that into a real `ServiceMonitor` (or `PodMonitor`) carrying the
+`release: kube-prometheus-stack` label Prometheus Operator actually selects on — without
+that label, Prometheus silently ignores the monitor too. Port and scrape interval stay
+composition-owned; the portal writes only `enabled` and, optionally, a custom `path`.
+
+### One dashboard, every service
+
+A single shared Grafana dashboard — P95/P99, error rate, request rate, in-flight
+saturation — parameterized by `$namespace`/`$app`/`$env`, works for any golden-path
+service with zero per-team configuration. The portal deep-links to it with variables
+pre-filled.
+
+**Known gap, not hidden:** `$env` is a naming-suffix convention derived from `$app`, not a
+real Prometheus label — the `ServiceMonitor` sets no `targetLabels`. A proper `environment`
+label is a tracked fast-follow, not a "someday."
+
+## Catalog completeness score
+
+Every entity now carries a computed quality badge — description, owner, tags, links,
+lifecycle, and, for `API` entities, whether a spec is actually resolvable. It's computed
+fresh on every read; nothing is stored or cached separately from the entity itself, so the
+score can never drift from what's actually committed in `gitops-infra`.
+
+It matters most for manually registered or older entities. Anything scaffolded through the
+golden path already fills in every one of these fields by default, so a low score on a
+scaffolded service is a signal something was edited out afterward — not that scaffolding
+missed it.
+
+## The Pipeline tab, rebuilt for real scale
+
+The CI/CD, Releases, and Dependencies cards were designed around small projects and broke
+down for exactly the case this platform is meant to serve: daily CI activity, dozens of
+releases, hundreds of transitive dependencies.
+
+- **CI runs** were hard-capped at 5, with a "Show more" toggle that only ever revealed
+  already-fetched runs — for a team shipping several times a day, that window was
+  exhausted before lunch.
+- **Releases** were capped at 10, same fake-pagination pattern, no way to search.
+- **Package manifests** were silently truncated at 200 entries with no indicator — and
+  because one parser built its list from Go map iteration, which is randomized per
+  process, a `package.json` with more than 200 dependencies kept a *different* random
+  subset on every single page load.
+
+Each card is now a compact summary with a **View all →** action that opens a search and
+filter view. CI gets status and branch filters plus real backend pagination past the old
+5-run ceiling. Releases gets an instant tag search — the same picker now reused by the
+dependency-compare control, replacing what used to be a bare, unsearchable
+`<select>` capped at 10 tags. Dependencies gets instant search across name, ecosystem, and
+version, plus direct/dev/indirect filtering.
+
+Package manifests now report `truncated`/`total` instead of dropping entries silently, the
+cap is raised 200 → 500, and packages are sorted before truncating — so which packages
+survive the cap is now deterministic instead of re-randomized on every reload.
+
+The dependency-compare diff is also **grouped per manifest** now, closing a real
+correctness gap: a monorepo with more than one manifest in the same ecosystem — this
+portal's own `cli/go.mod` alongside `backend/go.mod` — could previously have one
+manifest's diff silently overwritten by the other's, since both were keyed into one shared
+map by name alone.
+
+## Upgrading
+
+No new required portal environment variables.
+
+**This release only does something if the other three repos are deployed too.** The
+Monitoring toggle produces a correctly-shaped field on the `XTenantApp` regardless of
+whether `wxops-core`'s composition and `wxops-gitops-infrastructure`'s dashboard are live —
+it just won't emit a working `ServiceMonitor` or have anywhere to point until they are.
+
+**Existing scaffolded services don't retroactively get any of this.** A service scaffolded
+before v0.5.1 keeps its old near-empty `/metrics` and its old, non-functional monitoring
+annotations until it's rescaffolded or manually updated.
+
+## Also in this release
+
+- New `page`/`limit` query parameters on the CI and releases endpoints — additive, so
+  omitting them reproduces the exact previous behavior.
+- The catalog's `entityResponse` gains `completenessScore: { score, max, checks }`.
+- Dependency manifests gain `truncated`/`total`; the compare endpoint's diff shape is now
+  grouped by manifest instead of one flat list.
+
+Full detail, including the known limitations this surfaced, is in
+[Runtime Observability](/docs/platform/observability) and
+[Service Catalog](/docs/catalog/service-catalog).

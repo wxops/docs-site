@@ -201,8 +201,9 @@ that residual exposure is unacceptable, leave `ALERTMANAGER_URL` unset.
 
 The metric contract, `ServiceMonitor`/`PodMonitor` emission, the scaffold wizard's
 Monitoring toggle, and the shared golden-path dashboard have landed — this section
-describes how they fit together. (Code-complete across all four repos as of this writing;
-see the [Roadmap](../roadmap/roadmap.md) for release status.)
+describes how they fit together. Portal-side shipped in `v0.5.1`; the composition work in
+`wxops-core` is merged to `main` but not yet tagged as of this writing — see the
+[Roadmap](../roadmap/roadmap.md) for current release status per repo.
 
 **The contract.** Every golden-path template (Go, Node.js, Python) emits the same three
 metrics from a real Prometheus client library, not a hand-rolled `/metrics`:
@@ -220,10 +221,21 @@ monitoring for every tenant, not just the offending service.
 **Turning it on.** Monitoring is a checkbox in the scaffold wizard and Edit Config, same
 tier as Darlane. Enabling it sets `spec.parameters.monitoring.enabled` on the `XTenantApp`
 — the composition emits a real `ServiceMonitor` (or `PodMonitor` when the workload has no
-Service) carrying the `release: kube-prometheus-stack` label Prometheus Operator selects
-on, plus a per-monitor `sampleLimit`. `prometheus.io/scrape` pod annotations are no longer
-used anywhere in the golden path — Prometheus Operator ignores them without an
-`additionalScrapeConfig`, which this platform doesn't run.
+Service; an explicit `kind: ServiceMonitor | PodMonitor` override also exists on the XRD,
+the portal just doesn't write it) carrying the `release: kube-prometheus-stack` label
+Prometheus Operator selects on, plus a per-monitor `sampleLimit`. `prometheus.io/scrape`
+pod annotations are no longer used anywhere in the golden path — Prometheus Operator
+ignores them without an `additionalScrapeConfig`, which this platform doesn't run.
+
+:::caution[Per-cluster provider RBAC must be applied first, or this fails silently-ish]
+Creating a `ServiceMonitor`/`PodMonitor` requires `monitoring.coreos.com` permissions on
+Crossplane's `provider-kubernetes` `ProviderConfig` ServiceAccount. That grant is **not**
+carried by a package bump — it's a manual `kubectl apply` of
+`providers/rbac-provider-kubernetes.yaml` on every spoke cluster. Until it's applied, every
+`ServiceMonitor`/`PodMonitor` a tenant enables fails `forbidden` at reconcile — visible in
+the XR's own status/events, not as a portal error, so check there first if metrics never
+show up after flipping the toggle.
+:::
 
 **The dashboard.** One Grafana dashboard, keyed on the contract metric names — P95/P99
 latency, error rate, request rate, and in-flight saturation — parameterized by
@@ -244,6 +256,7 @@ knew was approximate. All are platform-side.
 
 | Limitation | Consequence |
 |---|---|
+| `monitoring.coreos.com` RBAC is a manual per-cluster apply, not carried by any package bump | `ServiceMonitor`/`PodMonitor` creation fails `forbidden` on any spoke cluster where it hasn't been applied yet — see the caution above |
 | Prometheus `sampleLimit` is per-`ServiceMonitor` from the composition; `targetLimit` / `labelLimit` are still `0` cluster-wide | A tenant cannot raise their own sample cap, but a high-cardinality label from an unrelated cluster-wide target can still degrade monitoring platform-wide |
 | The collector stamps a fixed `cluster` label | Log links cannot be scoped per cluster in a multi-cluster estate |
 | Alerts carry no `app` label | Narrowing is by `pod` prefix, as described above |
